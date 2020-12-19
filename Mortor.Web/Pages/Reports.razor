@@ -33,7 +33,7 @@
         <RadzenGridColumn TItem="Report" Title="Actions" Width="10rem">
             <Template Context="data">
                 <RadzenButton Text="View" Icon="edit" Click=@(() => OnViewReport(data.Id)) />
-                <RadzenButton Text="Delete" Icon="delete" Click=@(() => OnDeleteReport(data.Id)) />
+                <RadzenButton Text="Delete" Icon="delete" Click=@(() => OnDeleteReport(data)) />
             </Template>
         </RadzenGridColumn>
     </Columns>
@@ -57,15 +57,14 @@
         NavigationManager.NavigateTo($"/reports/{reportId}");
     }
 
-    private async Task OnDeleteReport(Guid reportId)
+    private async Task OnDeleteReport(Report toRemove)
     {
         var res = await DialogService.Confirm("Are you sure you want to delete this report?");
         if (res ?? false)
         {
-            var toRemove = await MortorBlazorContext.Reports.FindAsync(reportId);
             MortorBlazorContext.Reports.Remove(toRemove);
             await MortorBlazorContext.SaveChangesAsync();
-            FileService.RemoveAllImagesFromReport(reportId.ToString());
+            FileService.RemoveAllImagesFromReport(toRemove.Id.ToString());
             await _reportGrid.Reload();
         }
     }

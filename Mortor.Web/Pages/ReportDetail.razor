@@ -1,5 +1,6 @@
 ﻿@page "/reports/{reportId}"
 @using Mortor.Web.Data
+@using Microsoft.EntityFrameworkCore
 
 @inject MortorBlazorContext MortorBlazorContext;
 @inject DialogService DialogService
@@ -19,26 +20,60 @@
             AllowPaging="true" 
             PageSize="5"
             AllowSorting="true" 
+            EditMode="DataGridEditMode.Single"
             Data="@_reportLines" 
+            @ref="_reportLineGrid"
             TItem="ReportLine">
     <Columns>
         <RadzenGridColumn TItem="ReportLine" Property="Image" Title="Image" Sortable="false" Filterable="false">
             <Template Context="data">
                 <RadzenImage Path="@data?.ImagePath" Style="max-width: 320px;max-height: 320px" />
             </Template>
+            <EditTemplate Context="_">
+                <InputFile OnChange="@OnImageChange" />
+            </EditTemplate>
         </RadzenGridColumn>
-        <RadzenGridColumn TItem="ReportLine" Property="Responsible" Title="Responsible"/>
-        <RadzenGridColumn TItem="ReportLine" Property="Description" Title="Description"/>
+        <RadzenGridColumn TItem="ReportLine" Property="Responsible" Title="Responsible">
+            <Template Context="data">
+                @data.Responsible
+            </Template>
+            <EditTemplate Context="data">
+                <RadzenTextBox @bind-Value="@data.Responsible" />
+            </EditTemplate>
+        </RadzenGridColumn>
+        <RadzenGridColumn TItem="ReportLine" Property="Description" Title="Description">
+            <Template Context="data">
+                @(data.Description)
+            </Template>
+            <EditTemplate Context="data">
+                <RadzenTextBox @bind-Value="@data.Description"/>
+            </EditTemplate>
+        </RadzenGridColumn>
         <RadzenGridColumn TItem="ReportLine" Property="DueDate" Title="Due Date">
             <Template Context="data">
-                @(data.DueDate.ToShortDateString())
+                @data.DueDate.ToShortDateString()
             </Template>
+            <EditTemplate Context="data">
+                <RadzenDatePicker DateFormat="d" @bind-Value=@data.DueDate ShowTime="false" />
+            </EditTemplate>
         </RadzenGridColumn>
-        <RadzenGridColumn TItem="ReportLine" Property="Location" Title="Location"/>
-        <RadzenGridColumn TItem="ReportLine" Title="Actions" Width="10rem">
+        <RadzenGridColumn TItem="ReportLine" Property="Location" Title="Location">
             <Template Context="data">
-                <RadzenButton Text="Delete" Icon="delete" Click=@(() => OnDeleteReportLine(data.Id)) />
+                @data.Location
             </Template>
+            <EditTemplate Context="data">
+                <RadzenTextBox @bind-Value=@data.Location />
+            </EditTemplate>
+        </RadzenGridColumn>
+        <RadzenGridColumn TItem="ReportLine" Title="Actions">
+            <Template Context="data">
+                <RadzenButton Icon="edit" Click=@(() => OnEditReportLine(data)) />
+                <RadzenButton Icon="delete" Click=@(() => OnDeleteReportLine(data)) />
+            </Template>
+            <EditTemplate Context="order">
+                <RadzenButton Icon="save" Click="@(() => SaveRow(order))" />
+                <RadzenButton Icon="cancel" ButtonStyle="ButtonStyle.Secondary" Click="@(() => CancelEdit(order))" />
+            </EditTemplate>
         </RadzenGridColumn>
     </Columns>
 </RadzenGrid>
@@ -46,62 +81,118 @@
 
 <RadzenButton Click="@OnAddReportLine" 
               Text="Add Line" 
+              Visible="@(!_isEditing)"
               Class="app-fab--absolute" />
 
 @code {
+    private byte[] _image;
+    private bool _isEditing;
+    private bool _imageChanged;
+    
+    private void ResetState()
+    {
+        _image = new byte[0];
+        _isEditing = false;
+        _imageChanged = false;
+    }
+    
     [Parameter]
     public string ReportId { get; set; }
-    
+
     IEnumerable<ReportLine> _reportLines;
-    private AddNewReportLine _addReportLineRef;
+    private RadzenGrid<ReportLine> _reportLineGrid;
 
     protected override void OnInitialized()
-    {
-        SetReportLineDataSource();
-    }
-
-    private void SetReportLineDataSource()
     {
         _reportLines = MortorBlazorContext.ReportLines.Where(x => x.ReportId == Guid.Parse(ReportId));
     }
 
     private async Task OnAddReportLine()
     {
-        await DialogService.OpenAsync("New Report Line",
-            ds =>
-                @<div>
-                    <AddNewReportLine @ref=_addReportLineRef ReportId="@Guid.Parse(ReportId)" />
-                    <div class="row">
-                        <div class="col-md-12">
-                            <RadzenButton 
-                                Text="Save" 
-                                Click="async () => { 
-                                                       await _addReportLineRef.SaveReportLine();
-                                                       SetReportLineDataSource();
-                                                       ds.Close(true);
-                                                   }" 
-                                Style="margin-bottom: 10px; width: 150px"/>
-                            <RadzenButton Text="Cancel"
-                                          Click="() => ds.Close(false)"
-                                          ButtonStyle="ButtonStyle.Secondary" 
-                                          Style="margin-bottom: 10px; width: 150px"/>
-                        </div>
-                    </div>
-                </div>
-                );
+        var report = new ReportLine {DueDate = GetDueDate(), ReportId = Guid.Parse(ReportId)};
+        await _reportLineGrid.InsertRow(report);
+        await _reportLineGrid.EditRow(report);
+        _isEditing = true;
     }
 
-    private async Task OnDeleteReportLine(Guid reportLineId)
+    private DateTime GetDueDate()
+    {
+        var d = DateTime.Today.AddDays(7);
+        while (d.DayOfWeek == DayOfWeek.Sunday || d.DayOfWeek == DayOfWeek.Saturday)
+        {
+            d = d.AddDays(1);
+        }
+        return d;
+    }
+
+    private async Task OnDeleteReportLine(ReportLine line)
     {
         var res = await DialogService.Confirm("Are you sure you want to delete this line?");
         if (res ?? false)
         {
-            var toRemove = await MortorBlazorContext.ReportLines.FindAsync(reportLineId);
-            MortorBlazorContext.ReportLines.Remove(toRemove);
+            MortorBlazorContext.ReportLines.Remove(line);
             await MortorBlazorContext.SaveChangesAsync();
-            FileService.DeleteImage(toRemove.ImagePath);
-            StateHasChanged();
+            FileService.DeleteImage(line.ImagePath);
+            await _reportLineGrid.Reload();
         }
     }
 
+    private async Task SaveRow(ReportLine value)
+    {
+        if (_imageChanged)
+        {
+            if (!string.IsNullOrEmpty(value.ImagePath))
+            {
+                FileService.DeleteImage(value.ImagePath);
+            }
+            var imagePath = await FileService.UploadFile(_image, ReportId);
+            value.ImagePath = imagePath;
+        }
+        await _reportLineGrid.UpdateRow(value);
+        var reportLineEntry = MortorBlazorContext.Entry(value);
+
+        if (reportLineEntry.State == EntityState.Detached)
+        {
+            await MortorBlazorContext.ReportLines.AddAsync(value);
+        }
+        await MortorBlazorContext.SaveChangesAsync();
+        
+        ResetState();
+    }
+
+    private void CancelEdit(ReportLine value)
+    {
+        _reportLineGrid.CancelEditRow(value);
+        var reportLineEntry = MortorBlazorContext.Entry(value);
+        
+        if (reportLineEntry.State != EntityState.Modified) return;
+        reportLineEntry.CurrentValues.SetValues(reportLineEntry.OriginalValues);
+        reportLineEntry.State = EntityState.Unchanged;
+
+        ResetState();
+    }
+    
+    private void OnEditReportLine(ReportLine value)
+    {
+        _reportLineGrid.EditRow(value);
+        ResetState();
+    }
+    
+    private async Task OnImageChange(InputFileChangeEventArgs e)
+    {
+        const int maxAllowedFiles = 1;
+        const string format = "image/png";
+
+        foreach (var imageFile in e.GetMultipleFiles(maxAllowedFiles))
+        {
+            var resizedImageFile = await imageFile.RequestImageFileAsync(format, 
+                600, 600);
+            var buffer = new byte[resizedImageFile.Size];
+            await resizedImageFile.OpenReadStream().ReadAsync(buffer);
+            _image = buffer;
+            _imageChanged = true;
+        }
+    }
 }
+
+

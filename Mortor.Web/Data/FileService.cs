@@ -7,14 +7,15 @@ namespace Mortor.Web.Data
 {
     public class FileService
     {
-        public async Task<string> UploadFile(byte[] imageContent, string imageName, string reportId)
+        public async Task<string> UploadFile(byte[] imageContent, string reportId)
         {
+            var pngName = $"{Guid.NewGuid()}.png";
             var path = Path.Combine("upload", reportId);
             var uploadPathOnFs = Path.Combine("wwwroot", path);
             Directory.CreateDirectory(uploadPathOnFs);
-            uploadPathOnFs = Path.Combine(uploadPathOnFs, imageName + ".png");
+            uploadPathOnFs = Path.Combine(uploadPathOnFs, pngName);
             await File.WriteAllBytesAsync(uploadPathOnFs, imageContent);
-            return Path.Combine(path, imageName + ".png");
+            return Path.Combine(path, pngName);
         }
 
         public void RemoveAllImagesFromReport(string reportId)
