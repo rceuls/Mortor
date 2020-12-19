@@ -6,7 +6,9 @@ namespace Mortor.Web.Data
     public class ReportLine
     {
         [Key]
-        public string Id { get; set; }
+        public Guid Id { get; set; }
+
+        public Guid ReportId { get; set; }
         
         [Required]
         public string Responsible { get; set; }
@@ -20,7 +22,6 @@ namespace Mortor.Web.Data
         [Required]
         public string Location { get; set; }
         
-        [Required]
         public string ImagePath { get; set; }
     }
 }

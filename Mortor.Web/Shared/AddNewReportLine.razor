@@ -1,0 +1,83 @@
+@using Mortor.Web.Data
+@using Radzen.Blazor.Rendering
+@using System.IO
+@inject MortorBlazorContext MortorBlazorContext
+@inject FileService FileService;
+
+<form>
+  <div class="mb-3 row">
+    <label class="form-label">Responsible</label>
+    <RadzenTextBox @bind-Value="_responsible" class="form-control"/>
+  </div>
+  <div class="mb-3 row">
+    <label class="form-label">Due Date</label>
+    <RadzenDatePicker DateFormat="d" @bind-Value=@_dueDate ShowTime="false" class="form-control"/>
+  </div>
+  <div class="mb-3 row">
+    <label class="form-label">Location</label>
+    <RadzenTextBox @bind-Value="_location" class="form-control"/>
+  </div>
+  <div class="mb-3 row">
+    <label class="form-label">Description</label>
+    <RadzenTextBox @bind-Value="_description" class="form-control"/>
+  </div>
+  <div class="mb-3 row">
+    <InputFile OnChange=@OnImageChange />
+  </div>
+</form>
+
+@code {
+  [Parameter]
+  public Guid ReportId { get; set; }
+  
+  private string _description = string.Empty;
+  private string _responsible = string.Empty;
+  private DateTime _dueDate = GetInitialDueDate();
+  private string _location = string.Empty;
+  private byte[] _image = new byte[0];
+  private string _imageName;
+
+  private static DateTime GetInitialDueDate()
+  {
+    var dueDate = DateTime.Now.AddDays(7);
+    while (dueDate.DayOfWeek == DayOfWeek.Saturday || dueDate.DayOfWeek == DayOfWeek.Sunday)
+    {
+      dueDate = dueDate.AddDays(1);
+    }
+    return dueDate;
+  }
+
+  public async Task<Guid> SaveReportLine()
+  {
+    var imagePath = await FileService.UploadFile(_image, _imageName, ReportId.ToString());
+    var reportLine = new ReportLine
+    {
+      Description = _description,
+      Location = _location,
+      Responsible = _responsible,
+      DueDate = _dueDate,
+      ImagePath =  imagePath,
+      ReportId = ReportId
+    };
+    await MortorBlazorContext.AddAsync(reportLine);
+    await MortorBlazorContext.SaveChangesAsync();
+    return reportLine.Id;
+  }
+
+  private async Task OnImageChange(InputFileChangeEventArgs e)
+  {
+    const int maxAllowedFiles = 1;
+    const string format = "image/png";
+
+    foreach (var imageFile in e.GetMultipleFiles(maxAllowedFiles))
+    {
+      var resizedImageFile = await imageFile.RequestImageFileAsync(format, 
+        600, 600);
+      var buffer = new byte[resizedImageFile.Size];
+      await resizedImageFile.OpenReadStream().ReadAsync(buffer);
+      _image = buffer;
+      _imageName = imageFile.Name;
+    }
+  }
+
+}

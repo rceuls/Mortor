@@ -1,0 +1,76 @@
+﻿@page "/reports"
+@using Mortor.Web.Data
+
+@inject MortorBlazorContext _mortorBlazorContext;
+@inject DialogService _dialogService
+@inject NavigationManager _navigationManager;
+<style>
+    .app-fab--absolute {
+        position: fixed;
+        bottom: 1rem;
+        right: 1rem;
+    }
+</style>
+
+<RadzenGrid AllowFiltering="true" 
+            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" 
+            FilterMode="FilterMode.Advanced" 
+            AllowPaging="true" 
+            PageSize="5"
+            AllowSorting="true" 
+            Data="@_reports" 
+            TItem="Report">
+    <Columns>
+        <RadzenGridColumn TItem="Report" Property="Id" Title="Report Id">
+            <Template Context="data">
+                <RadzenButton Text="Detail" Click=@(() => OnViewReport(data.Id)) />
+            </Template>
+        </RadzenGridColumn>
+        <RadzenGridColumn TItem="Report" Property="CreatedBy" Title="Created By" />
+        <RadzenGridColumn TItem="Report" Property="TargetDate" Title="Created On">
+            <Template Context="data">
+                @($"{data.TargetDate:d}")
+            </Template>
+        </RadzenGridColumn>
+    </Columns>
+</RadzenGrid>
+
+
+<RadzenButton Click="@OnAddReport" 
+              Text="Add Report" 
+              Class="app-fab--absolute" />
+
+@code {
+    IEnumerable<Report> _reports;
+    private AddNewReport _addReportRef;
+
+    protected override void OnInitialized()
+    {
+        _reports = _mortorBlazorContext.Reports;
+    }
+    
+    private void OnViewReport(Guid reportId)
+    {
+        _navigationManager.NavigateTo($"/reports/{reportId}");
+    }
+
+    private async Task OnAddReport()
+    {
+        await _dialogService.OpenAsync("New Report",
+            ds =>
+                @<div>
+                    <AddNewReport @ref=_addReportRef />
+                    <div class="row">
+                        <div class="col-md-12">
+                            <RadzenButton Text="Save" Click="async () => { 
+                                await _addReportRef.SaveReport();
+                                ds.Close(true);
+                            }" Style="margin-bottom: 10px; width: 150px"/>
+                            <RadzenButton Text="Cancel" Click="() => ds.Close(false)" ButtonStyle="ButtonStyle.Secondary" Style="margin-bottom: 10px; width: 150px"/>
+                        </div>
+                    </div>
+                </div>
+                );
+    }
+
+}

@@ -10,8 +10,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Mortor.Web.Migrations
 {
     [DbContext(typeof(MortorBlazorContext))]
-    [Migration("20201218131902_AddLineToReport")]
-    partial class AddLineToReport
+    [Migration("20201219104705_BasicSetup")]
+    partial class BasicSetup
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -23,8 +23,9 @@ namespace Mortor.Web.Migrations
 
             modelBuilder.Entity("Mortor.Web.Data.Report", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("text");
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
@@ -40,8 +41,9 @@ namespace Mortor.Web.Migrations
 
             modelBuilder.Entity("Mortor.Web.Data.ReportLine", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("text");
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -50,16 +52,15 @@ namespace Mortor.Web.Migrations
                     b.Property<DateTime>("DueDate")
                         .HasColumnType("timestamp without time zone");
 
-                    b.Property<string>("ImagePath")
-                        .IsRequired()
-                        .HasColumnType("text");
+                    b.Property<byte[]>("Image")
+                        .HasColumnType("bytea");
 
                     b.Property<string>("Location")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("ReportId")
-                        .HasColumnType("text");
+                    b.Property<Guid>("ReportId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Responsible")
                         .IsRequired()
@@ -69,14 +70,16 @@ namespace Mortor.Web.Migrations
 
                     b.HasIndex("ReportId");
 
-                    b.ToTable("ReportLine");
+                    b.ToTable("ReportLines");
                 });
 
             modelBuilder.Entity("Mortor.Web.Data.ReportLine", b =>
                 {
                     b.HasOne("Mortor.Web.Data.Report", null)
                         .WithMany("ReportLines")
-                        .HasForeignKey("ReportId");
+                        .HasForeignKey("ReportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Mortor.Web.Data.Report", b =>

@@ -10,5 +10,6 @@ namespace Mortor.Web.Data
         }
         
         public DbSet<Report> Reports { get; set; }
+        public DbSet<ReportLine> ReportLines { get; set; }
     }
 }

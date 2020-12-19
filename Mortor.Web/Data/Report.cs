@@ -6,7 +6,8 @@ namespace Mortor.Web.Data
 {
     public class Report 
     {
-        [Key] public string Id { get; set; }
+        [Key] 
+        public Guid Id { get; set; }
         
         [Required]
         public string CreatedBy { get; set; }

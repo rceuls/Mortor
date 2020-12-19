@@ -1,0 +1,82 @@
+﻿@page "/reports/{reportId}"
+@using Mortor.Web.Data
+
+@inject MortorBlazorContext MortorBlazorContext;
+@inject DialogService DialogService
+@inject NavigationManager NavigationManager;
+<style>
+    .app-fab--absolute {
+        position: fixed;
+        bottom: 1rem;
+        right: 1rem;
+    }
+</style>
+
+<RadzenGrid AllowFiltering="true" 
+            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" 
+            FilterMode="FilterMode.Advanced" 
+            AllowPaging="true" 
+            PageSize="5"
+            AllowSorting="true" 
+            Data="@_reportLines" 
+            TItem="ReportLine">
+    <Columns>
+        <RadzenGridColumn TItem="ReportLine" Property="Image" Title="Image" Sortable="false" Filterable="false">
+            <Template Context="data">
+                <RadzenImage Path="@data?.ImagePath" Style="max-width: 320px;max-height: 320px" />
+            </Template>
+        </RadzenGridColumn>
+        <RadzenGridColumn TItem="ReportLine" Property="Responsible" Title="Responsible"/>
+        <RadzenGridColumn TItem="ReportLine" Property="Description" Title="Description"/>
+        <RadzenGridColumn TItem="ReportLine" Property="DueDate" Title="Due Date">
+            <Template Context="data">
+                @(data.DueDate.ToShortDateString())
+            </Template>
+        </RadzenGridColumn>
+        <RadzenGridColumn TItem="ReportLine" Property="Location" Title="Location"/>
+    </Columns>
+</RadzenGrid>
+
+
+<RadzenButton Click="@OnAddReport" 
+              Text="Add Report" 
+              Class="app-fab--absolute" />
+
+@code {
+    [Parameter]
+    public string ReportId { get; set; }
+    
+    IEnumerable<ReportLine> _reportLines;
+    private AddNewReportLine _addReportLineRef;
+
+    protected override void OnInitialized()
+    {
+        SetReportLineDataSource();
+    }
+
+    private void SetReportLineDataSource()
+    {
+        _reportLines = MortorBlazorContext.ReportLines.Where(x => x.ReportId == Guid.Parse(ReportId));
+    }
+
+    private async Task OnAddReport()
+    {
+        await DialogService.OpenAsync("New Report Line",
+            ds =>
+                @<div>
+                    <AddNewReportLine @ref=_addReportLineRef ReportId="@Guid.Parse(ReportId)" />
+                    <div class="row">
+                        <div class="col-md-12">
+                            <RadzenButton Text="Save" Click="async () => { 
+                                await _addReportLineRef.SaveReportLine();
+                                SetReportLineDataSource();
+                                ds.Close(true);
+                            }" Style="margin-bottom: 10px; width: 150px"/>
+                            <RadzenButton Text="Cancel" Click="() => ds.Close(false)" ButtonStyle="ButtonStyle.Secondary" Style="margin-bottom: 10px; width: 150px"/>
+                        </div>
+                    </div>
+                </div>
+                );
+    }
+
+}
