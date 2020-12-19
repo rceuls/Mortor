@@ -14,7 +14,8 @@
     }
 </style>
 
-<RadzenGrid AllowFiltering="true" 
+<RadzenGrid @ref="_reportGrid"
+            AllowFiltering="true" 
             FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" 
             FilterMode="FilterMode.Advanced" 
             AllowPaging="true" 
@@ -31,13 +32,12 @@
         </RadzenGridColumn>
         <RadzenGridColumn TItem="Report" Title="Actions" Width="10rem">
             <Template Context="data">
-                <RadzenButton Text="Edit" Icon="edit" Click=@(() => OnViewReport(data.Id)) />
+                <RadzenButton Text="View" Icon="edit" Click=@(() => OnViewReport(data.Id)) />
                 <RadzenButton Text="Delete" Icon="delete" Click=@(() => OnDeleteReport(data.Id)) />
             </Template>
         </RadzenGridColumn>
     </Columns>
 </RadzenGrid>
-
 
 <RadzenButton Click="@OnAddReport" 
               Text="Add Report" 
@@ -45,14 +45,9 @@
 
 @code {
     private IEnumerable<Report> _reports;
-    private AddNewReport _addReportRef;
+    private RadzenGrid<Report> _reportGrid;
 
     protected override void OnInitialized()
-    {
-        SetReportDataSource();
-    }
-
-    private void SetReportDataSource()
     {
         _reports = MortorBlazorContext.Reports;
     }
@@ -60,31 +55,6 @@
     private void OnViewReport(Guid reportId)
     {
         NavigationManager.NavigateTo($"/reports/{reportId}");
-    }
-
-    private async Task OnAddReport()
-    {
-        await DialogService.OpenAsync("New Report",
-            ds =>
-                @<div>
-                    <AddNewReport @ref=_addReportRef />
-                    <div class="row">
-                        <div class="col-md-12">
-                            <RadzenButton Text="Save" 
-                                          Click="async () => { 
-                                                                 await _addReportRef.SaveReport();
-                                                                 SetReportDataSource();
-                                                                 ds.Close(true);
-                                                             }"
-                                          Style="margin-bottom: 10px; width: 150px"/>
-                            <RadzenButton Text="Cancel"
-                                          Click="() => ds.Close(false)"
-                                          ButtonStyle="ButtonStyle.Secondary" 
-                                          Style="margin-bottom: 10px; width: 150px"/>
-                        </div>
-                    </div>
-                </div>
-                );
     }
 
     private async Task OnDeleteReport(Guid reportId)
@@ -96,6 +66,19 @@
             MortorBlazorContext.Reports.Remove(toRemove);
             await MortorBlazorContext.SaveChangesAsync();
             FileService.RemoveAllImagesFromReport(reportId.ToString());
+            await _reportGrid.Reload();
         }
+    }
+
+    private async Task OnAddReport()
+    {
+        var report = new Report()
+        {
+            CreatedBy = "Raf",
+            TargetDate = DateTime.Today
+        };
+        await _reportGrid.InsertRow(report);
+        await MortorBlazorContext.Reports.AddAsync(report);
+        await MortorBlazorContext.SaveChangesAsync();
     }
 }
