@@ -4,6 +4,7 @@
 @inject MortorBlazorContext MortorBlazorContext;
 @inject DialogService DialogService
 @inject NavigationManager NavigationManager;
+@inject FileService FileService;
 <style>
     .app-fab--absolute {
         position: fixed;
@@ -34,12 +35,17 @@
             </Template>
         </RadzenGridColumn>
         <RadzenGridColumn TItem="ReportLine" Property="Location" Title="Location"/>
+        <RadzenGridColumn TItem="ReportLine" Title="Actions" Width="10rem">
+            <Template Context="data">
+                <RadzenButton Text="Delete" Icon="delete" Click=@(() => OnDeleteReportLine(data.Id)) />
+            </Template>
+        </RadzenGridColumn>
     </Columns>
 </RadzenGrid>
 
 
-<RadzenButton Click="@OnAddReport" 
-              Text="Add Report" 
+<RadzenButton Click="@OnAddReportLine" 
+              Text="Add Line" 
               Class="app-fab--absolute" />
 
 @code {
@@ -59,7 +65,7 @@
         _reportLines = MortorBlazorContext.ReportLines.Where(x => x.ReportId == Guid.Parse(ReportId));
     }
 
-    private async Task OnAddReport()
+    private async Task OnAddReportLine()
     {
         await DialogService.OpenAsync("New Report Line",
             ds =>
@@ -67,16 +73,35 @@
                     <AddNewReportLine @ref=_addReportLineRef ReportId="@Guid.Parse(ReportId)" />
                     <div class="row">
                         <div class="col-md-12">
-                            <RadzenButton Text="Save" Click="async () => { 
-                                await _addReportLineRef.SaveReportLine();
-                                SetReportLineDataSource();
-                                ds.Close(true);
-                            }" Style="margin-bottom: 10px; width: 150px"/>
-                            <RadzenButton Text="Cancel" Click="() => ds.Close(false)" ButtonStyle="ButtonStyle.Secondary" Style="margin-bottom: 10px; width: 150px"/>
+                            <RadzenButton 
+                                Text="Save" 
+                                Click="async () => { 
+                                                       await _addReportLineRef.SaveReportLine();
+                                                       SetReportLineDataSource();
+                                                       ds.Close(true);
+                                                   }" 
+                                Style="margin-bottom: 10px; width: 150px"/>
+                            <RadzenButton Text="Cancel"
+                                          Click="() => ds.Close(false)"
+                                          ButtonStyle="ButtonStyle.Secondary" 
+                                          Style="margin-bottom: 10px; width: 150px"/>
                         </div>
                     </div>
                 </div>
                 );
+    }
+
+    private async Task OnDeleteReportLine(Guid reportLineId)
+    {
+        var res = await DialogService.Confirm("Are you sure you want to delete this line?");
+        if (res ?? false)
+        {
+            var toRemove = await MortorBlazorContext.ReportLines.FindAsync(reportLineId);
+            MortorBlazorContext.ReportLines.Remove(toRemove);
+            await MortorBlazorContext.SaveChangesAsync();
+            FileService.DeleteImage(toRemove.ImagePath);
+            StateHasChanged();
+        }
     }
 
 }

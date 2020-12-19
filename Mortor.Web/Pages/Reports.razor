@@ -1,9 +1,11 @@
 ﻿@page "/reports"
 @using Mortor.Web.Data
 
-@inject MortorBlazorContext _mortorBlazorContext;
-@inject DialogService _dialogService
-@inject NavigationManager _navigationManager;
+@inject MortorBlazorContext MortorBlazorContext;
+@inject DialogService DialogService
+@inject NavigationManager NavigationManager;
+@inject FileService FileService;
+
 <style>
     .app-fab--absolute {
         position: fixed;
@@ -18,18 +20,19 @@
             AllowPaging="true" 
             PageSize="5"
             AllowSorting="true" 
-            Data="@_reports" 
+            Data="@_reports"
             TItem="Report">
     <Columns>
-        <RadzenGridColumn TItem="Report" Property="Id" Title="Report Id">
-            <Template Context="data">
-                <RadzenButton Text="Detail" Click=@(() => OnViewReport(data.Id)) />
-            </Template>
-        </RadzenGridColumn>
-        <RadzenGridColumn TItem="Report" Property="CreatedBy" Title="Created By" />
-        <RadzenGridColumn TItem="Report" Property="TargetDate" Title="Created On">
+        <RadzenGridColumn TItem="Report" Property="CreatedBy" Title="Created By" Width="20rem" />
+        <RadzenGridColumn TItem="Report" Property="TargetDate" Title="Created On" Width="20rem">
             <Template Context="data">
                 @($"{data.TargetDate:d}")
+            </Template>
+        </RadzenGridColumn>
+        <RadzenGridColumn TItem="Report" Title="Actions" Width="10rem">
+            <Template Context="data">
+                <RadzenButton Text="Edit" Icon="edit" Click=@(() => OnViewReport(data.Id)) />
+                <RadzenButton Text="Delete" Icon="delete" Click=@(() => OnDeleteReport(data.Id)) />
             </Template>
         </RadzenGridColumn>
     </Columns>
@@ -41,36 +44,58 @@
               Class="app-fab--absolute" />
 
 @code {
-    IEnumerable<Report> _reports;
+    private IEnumerable<Report> _reports;
     private AddNewReport _addReportRef;
 
     protected override void OnInitialized()
     {
-        _reports = _mortorBlazorContext.Reports;
+        SetReportDataSource();
     }
-    
+
+    private void SetReportDataSource()
+    {
+        _reports = MortorBlazorContext.Reports;
+    }
+
     private void OnViewReport(Guid reportId)
     {
-        _navigationManager.NavigateTo($"/reports/{reportId}");
+        NavigationManager.NavigateTo($"/reports/{reportId}");
     }
 
     private async Task OnAddReport()
     {
-        await _dialogService.OpenAsync("New Report",
+        await DialogService.OpenAsync("New Report",
             ds =>
                 @<div>
                     <AddNewReport @ref=_addReportRef />
                     <div class="row">
                         <div class="col-md-12">
-                            <RadzenButton Text="Save" Click="async () => { 
-                                await _addReportRef.SaveReport();
-                                ds.Close(true);
-                            }" Style="margin-bottom: 10px; width: 150px"/>
-                            <RadzenButton Text="Cancel" Click="() => ds.Close(false)" ButtonStyle="ButtonStyle.Secondary" Style="margin-bottom: 10px; width: 150px"/>
+                            <RadzenButton Text="Save" 
+                                          Click="async () => { 
+                                                                 await _addReportRef.SaveReport();
+                                                                 SetReportDataSource();
+                                                                 ds.Close(true);
+                                                             }"
+                                          Style="margin-bottom: 10px; width: 150px"/>
+                            <RadzenButton Text="Cancel"
+                                          Click="() => ds.Close(false)"
+                                          ButtonStyle="ButtonStyle.Secondary" 
+                                          Style="margin-bottom: 10px; width: 150px"/>
                         </div>
                     </div>
                 </div>
                 );
     }
 
+    private async Task OnDeleteReport(Guid reportId)
+    {
+        var res = await DialogService.Confirm("Are you sure you want to delete this report?");
+        if (res ?? false)
+        {
+            var toRemove = await MortorBlazorContext.Reports.FindAsync(reportId);
+            MortorBlazorContext.Reports.Remove(toRemove);
+            await MortorBlazorContext.SaveChangesAsync();
+            FileService.RemoveAllImagesFromReport(reportId.ToString());
+        }
+    }
 }
