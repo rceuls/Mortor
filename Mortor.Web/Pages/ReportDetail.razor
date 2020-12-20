@@ -67,11 +67,11 @@
         </RadzenGridColumn>
         <RadzenGridColumn TItem="ReportLine" Title="Actions">
             <Template Context="data">
-                <RadzenButton Icon="edit" Click=@(() => OnEditReportLine(data)) />
-                <RadzenButton Icon="delete" Click=@(() => OnDeleteReportLine(data)) />
+                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Info" Click=@(() => OnEditReportLine(data)) />
+                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Click=@(() => OnDeleteReportLine(data)) />
             </Template>
             <EditTemplate Context="order">
-                <RadzenButton Icon="save" Click="@(() => SaveRow(order))" />
+                <RadzenButton Icon="save"   Click="@(() => SaveRow(order))" />
                 <RadzenButton Icon="cancel" ButtonStyle="ButtonStyle.Secondary" Click="@(() => CancelEdit(order))" />
             </EditTemplate>
         </RadzenGridColumn>
@@ -139,25 +139,33 @@
 
     private async Task SaveRow(ReportLine value)
     {
-        if (_imageChanged)
+        try
         {
-            if (!string.IsNullOrEmpty(value.ImagePath))
+            if (_imageChanged)
             {
-                FileService.DeleteImage(value.ImagePath);
+                if (!string.IsNullOrEmpty(value.ImagePath))
+                {
+                    FileService.DeleteImage(value.ImagePath);
+                }
+                var imagePath = await FileService.UploadFile(_image, ReportId);
+                value.ImagePath = imagePath;
             }
-            var imagePath = await FileService.UploadFile(_image, ReportId);
-            value.ImagePath = imagePath;
+            
+            var reportLineEntry = MortorBlazorContext.Entry(value);
+            if (reportLineEntry.State == EntityState.Detached)
+            {
+                await MortorBlazorContext.ReportLines.AddAsync(value);
+            }
+            await MortorBlazorContext.SaveChangesAsync();
+            
+            await _reportLineGrid.UpdateRow(value);
+            ResetState();
         }
-        await _reportLineGrid.UpdateRow(value);
-        var reportLineEntry = MortorBlazorContext.Entry(value);
-
-        if (reportLineEntry.State == EntityState.Detached)
+        catch (Exception ex)
         {
-            await MortorBlazorContext.ReportLines.AddAsync(value);
+            await DialogService.Confirm("Error saving report line, check your input.");
+            Console.WriteLine(ex.Message);
         }
-        await MortorBlazorContext.SaveChangesAsync();
-        
-        ResetState();
     }
 
     private void CancelEdit(ReportLine value)

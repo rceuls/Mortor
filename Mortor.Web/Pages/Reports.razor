@@ -32,8 +32,8 @@
         </RadzenGridColumn>
         <RadzenGridColumn TItem="Report" Title="Actions" Width="10rem">
             <Template Context="data">
-                <RadzenButton Text="View" Icon="edit" Click=@(() => OnViewReport(data.Id)) />
-                <RadzenButton Text="Delete" Icon="delete" Click=@(() => OnDeleteReport(data)) />
+                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Info" Click=@(() => OnViewReport(data.Id)) />
+                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Click=@(() => OnDeleteReport(data)) />
             </Template>
         </RadzenGridColumn>
     </Columns>
