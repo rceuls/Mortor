@@ -1,10 +1,13 @@
 ﻿@page "/reports"
 @using Mortor.Web.Data
+@using System.Security.Claims
+@attribute [Authorize]
 
 @inject MortorBlazorContext MortorBlazorContext;
 @inject DialogService DialogService
 @inject NavigationManager NavigationManager;
 @inject FileService FileService;
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <style>
     .app-fab--absolute {
@@ -73,11 +76,18 @@
     {
         var report = new Report()
         {
-            CreatedBy = "Raf",
+            CreatedBy = await GetCreatedBy(),
             TargetDate = DateTime.Today
         };
         await _reportGrid.InsertRow(report);
         await MortorBlazorContext.Reports.AddAsync(report);
         await MortorBlazorContext.SaveChangesAsync();
     }
+
+    private async Task<string> GetCreatedBy()
+    {
+        var state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        return state.User.Claims.FirstOrDefault(x => x.Type == "name")?.Value ?? string.Empty;
+    }
+
 }

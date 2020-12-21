@@ -1,21 +1,17 @@
 ﻿@inherits LayoutComponentBase
 
-<RadzenDialog />
-
-<div class="container-fluid">
-    <div class="row">
-        <nav class="navbar">
-            <div>
-                <ul class="navbar-nav mr-auto">
-                    <li class="nav-item active">
-                        <a class="nav-link" href="/reports">Reports<span class="sr-only">(current)</span></a>
-                    </li>
-                </ul>
-            </div>
-        </nav>
-    </div>
-    <div class="row">
-        @Body
-    </div>
+<div class="page">
+     <div class="sidebar">
+        <NavMenu />
+     </div>
+    
+     <div class="main">
+        <div class="top-row px-4">
+            <AccessControl />
+        </div>
+    
+        <div class="content px-4">
+            @Body
+        </div>
+     </div>
 </div>
-
