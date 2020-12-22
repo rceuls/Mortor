@@ -1,9 +1,72 @@
 ﻿@page "/"
+@using Mortor.Web.Data
+
+@inject MortorBlazorContext Context;
 
 @attribute [Authorize]
 
+<RadzenAccordion Multiple="true" Style="background: #f7f7f7">
+    <Items>
+        <RadzenAccordionItem Text="Responsible" Icon="accessibility_new" Selected="true" Style="background: #f7f7f7">
+            <RadzenChart>
+                <RadzenColumnSeries 
+                    Data="@_responsibles" 
+                    CategoryProperty="Name" 
+                    Title="Item Count"
+                    LineType="LineType.Dotted"
+                    ValueProperty="Amount"
+                    Fill="#bfd6ff"
+                    />
+                <RadzenValueAxis Min="0" Step="1" />
+                <RadzenColumnOptions Radius="5" />
+                <RadzenLegend Visible="false" />
+            </RadzenChart>
+        </RadzenAccordionItem>
+        <RadzenAccordionItem Text="By Date" Icon="date_range" Selected="true">
+            <RadzenChart>
+                <RadzenColumnSeries 
+                    Data="@_byDate" 
+                    CategoryProperty="Name" 
+                    Title="Item Count"
+                    LineType="LineType.Dashed"
+                    ValueProperty="Amount"
+                    Fill="#4281f5"
+                />
+                <RadzenValueAxis Min="0" Step="1" />
+                <RadzenColumnOptions Radius="5" />
+                <RadzenLegend Visible="false" />
+            </RadzenChart>
+        </RadzenAccordionItem>
+    </Items>
+</RadzenAccordion>
 
 @code {
-    
+
+    public record NameCount
+    {
+        public NameCount(string name, int amount)
+        {
+            Name = name;
+            Amount = amount;
+        }
+
+        public string Name { get; }
+        public int Amount { get; }
+    }
+
+    private IEnumerable<NameCount> _responsibles;
+    private IEnumerable<NameCount> _byDate;
+
+    protected override void OnInitialized()
+    {
+        var lines = Context.ReportLines;
+        _responsibles = lines 
+            .GroupBy(x => x.Responsible)
+            .Select(x => new NameCount(x.Key, x.Count())).ToList();
+        
+        _byDate = lines
+            .GroupBy(x => x.DueDate)
+            .Select(x => new NameCount(x.Key.ToShortDateString(), x.Count())).ToList();
+    }
 
 }

@@ -1,6 +1,7 @@
 ﻿@page "/reports"
 @using Mortor.Web.Data
 @using System.Security.Claims
+@using Microsoft.EntityFrameworkCore
 @attribute [Authorize]
 
 @inject MortorBlazorContext MortorBlazorContext;
@@ -23,7 +24,7 @@
             FilterMode="FilterMode.Advanced" 
             AllowPaging="true" 
             PageSize="5"
-            AllowSorting="true" 
+            AllowSorting="true"
             Data="@_reports"
             TItem="Report">
     <Columns>
@@ -33,7 +34,8 @@
                 @($"{data.TargetDate:d}")
             </Template>
         </RadzenGridColumn>
-        <RadzenGridColumn TItem="Report" Title="Actions" Width="10rem">
+        <RadzenGridColumn TItem="Report" Property="ReportLines.Count" Title="Line items" Width="20rem" />
+        <RadzenGridColumn TItem="Report" Title="Actions" Width="10rem" Sortable="false" Filterable="false">
             <Template Context="data">
                 <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Info" Click=@(() => OnViewReport(data.Id)) />
                 <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Click=@(() => OnDeleteReport(data)) />
@@ -52,7 +54,7 @@
 
     protected override void OnInitialized()
     {
-        _reports = MortorBlazorContext.Reports;
+        _reports = MortorBlazorContext.Reports.Include(x => x.ReportLines).OrderBy(x => x.Id);
     }
 
     private void OnViewReport(Guid reportId)

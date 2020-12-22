@@ -106,7 +106,9 @@
 
     protected override void OnInitialized()
     {
-        _reportLines = MortorBlazorContext.ReportLines.Where(x => x.ReportId == Guid.Parse(ReportId));
+        _reportLines = MortorBlazorContext.ReportLines
+            .Where(x => x.ReportId == Guid.Parse(ReportId))
+            .OrderBy(x => x.Id);
     }
 
     private async Task OnAddReportLine()
